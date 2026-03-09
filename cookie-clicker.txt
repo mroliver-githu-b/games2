@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cookie Clicker</title>
+  <style>
+    body {
+      margin: 0;
+      background: #2b1d0e;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+
+    #backButton {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 10px 14px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      background: white;
+      color: black;
+      cursor: pointer;
+      z-index: 1000;
+    }
+
+    #backButton:hover {
+      background: #ddd;
+    }
+
+    h1 {
+      margin-top: 30px;
+      font-size: 42px;
+    }
+
+    #stats {
+      font-size: 24px;
+      margin: 20px 0;
+    }
+
+    #cookie {
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: #b8742f;
+      margin: 20px auto;
+      cursor: pointer;
+      position: relative;
+      box-shadow: inset -12px -12px 0 #9a5f23, 0 8px 20px rgba(0,0,0,0.35);
+      transition: transform 0.08s;
+    }
+
+    #cookie:active {
+      transform: scale(0.96);
+    }
+
+    .chip {
+      width: 24px;
+      height: 24px;
+      background: #3a2414;
+      border-radius: 50%;
+      position: absolute;
+    }
+
+    #shop {
+      width: 320px;
+      margin: 20px auto;
+      background: rgba(255,255,255,0.08);
+      padding: 16px;
+      border-radius: 12px;
+    }
+
+    .buyBtn {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #message {
+      min-height: 28px;
+      margin-top: 10px;
+      font-size: 18px;
+      color: #ffd27f;
+    }
+  </style>
+</head>
+<body>
+  <button id="backButton" onclick="goBack()">← Back to Oliver's Games</button>
+
+  <h1>Cookie Clicker</h1>
+
+  <div id="stats">
+    <div>Cookies: <span id="cookiesText">0</span></div>
+    <div>Per Click: <span id="perClickText">1</span></div>
+    <div>Auto Cookies / Sec: <span id="autoText">0</span></div>
+  </div>
+
+  <div id="cookie" onclick="clickCookie()">
+    <div class="chip" style="top:35px; left:50px;"></div>
+    <div class="chip" style="top:70px; left:140px;"></div>
+    <div class="chip" style="top:120px; left:80px;"></div>
+    <div class="chip" style="top:150px; left:145px;"></div>
+    <div class="chip" style="top:90px; left:35px;"></div>
+  </div>
+
+  <div id="shop">
+    <h2>Shop</h2>
+    <button class="buyBtn" onclick="buyClickUpgrade()">Buy Bigger Click (+1) - <span id="clickCostText">25</span></button>
+    <button class="buyBtn" onclick="buyAutoUpgrade()">Buy Auto Clicker (+1/sec) - <span id="autoCostText">50</span></button>
+    <div id="message"></div>
+  </div>
+
+  <script>
+    function goBack() {
+      window.location.href = "../";
+    }
+
+    let cookies = 0;
+    let perClick = 1;
+    let autoCookies = 0;
+    let clickUpgradeCost = 25;
+    let autoUpgradeCost = 50;
+
+    const cookiesText = document.getElementById("cookiesText");
+    const perClickText = document.getElementById("perClickText");
+    const autoText = document.getElementById("autoText");
+    const clickCostText = document.getElementById("clickCostText");
+    const autoCostText = document.getElementById("autoCostText");
+    const message = document.getElementById("message");
+
+    function saveGame() {
+      const saveData = {
+        cookies,
+        perClick,
+        autoCookies,
+        clickUpgradeCost,
+        autoUpgradeCost
+      };
+      localStorage.setItem("cookieClickerSave", JSON.stringify(saveData));
+    }
+
+    function loadGame() {
+      const saved = localStorage.getItem("cookieClickerSave");
+      if (!saved) return;
+
+      try {
+        const data = JSON.parse(saved);
+        cookies = data.cookies ?? 0;
+        perClick = data.perClick ?? 1;
+        autoCookies = data.autoCookies ?? 0;
+        clickUpgradeCost = data.clickUpgradeCost ?? 25;
+        autoUpgradeCost = data.autoUpgradeCost ?? 50;
+      } catch (e) {
+        console.log("Could not load save");
+      }
+    }
+
+    function updateUI() {
+      cookiesText.textContent = Math.floor(cookies);
+      perClickText.textContent = perClick;
+      autoText.textContent = autoCookies;
+      clickCostText.textContent = clickUpgradeCost;
+      autoCostText.textContent = autoUpgradeCost;
+    }
+
+    function showMessage(text) {
+      message.textContent = text;
+    }
+
+    function clickCookie() {
+      cookies += perClick;
+      updateUI();
+      saveGame();
+    }
+
+    function buyClickUpgrade() {
+      if (cookies >= clickUpgradeCost) {
+        cookies -= clickUpgradeCost;
+        perClick += 1;
+        clickUpgradeCost += 25;
+        showMessage("Bigger Click bought");
+        updateUI();
+        saveGame();
+      } else {
+        showMessage("Not enough cookies");
+      }
+    }
+
+    function buyAutoUpgrade() {
+      if (cookies >= autoUpgradeCost) {
+        cookies -= autoUpgradeCost;
+        autoCookies += 1;
+        autoUpgradeCost += 50;
+        showMessage("Auto Clicker bought");
+        updateUI();
+        saveGame();
+      } else {
+        showMessage("Not enough cookies");
+      }
+    }
+
+    function autoGain() {
+      cookies += autoCookies;
+      updateUI();
+      saveGame();
+    }
+
+    loadGame();
+    updateUI();
+    setInterval(autoGain, 1000);
+  </script>
+</body>
+</html>

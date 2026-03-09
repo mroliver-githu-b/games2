@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Snake 2</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 12px 0 6px;
+    }
+
+    p {
+      margin: 0 0 10px;
+    }
+
+    #controls {
+      margin: 10px 0;
+    }
+
+    button.mode-btn {
+      margin: 4px;
+      padding: 10px 14px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #normalBtn {
+      background: #444;
+      color: white;
+    }
+
+    #foreverBtn {
+      background: #0a84ff;
+      color: white;
+    }
+
+    #backButton {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 10px 14px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      background: white;
+      color: black;
+      cursor: pointer;
+      z-index: 1000;
+    }
+
+    #backButton:hover {
+      background: #ddd;
+    }
+
+    canvas {
+      display: block;
+      margin: 0 auto 20px auto;
+      background: #222;
+      border: 3px solid white;
+    }
+  </style>
+</head>
+<body>
+  <button id="backButton" onclick="goBack()">← Back to Oliver's Games</button>
+
+  <h1>Snake 2</h1>
+  <p>Use arrow keys to move. Press R to restart.</p>
+
+  <div id="controls">
+    <button class="mode-btn" id="normalBtn">Normal Mode</button>
+    <button class="mode-btn" id="foreverBtn">Forever Mode</button>
+  </div>
+
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+  <script>
+    function goBack() {
+      window.location.href = "../";
+    }
+
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const normalBtn = document.getElementById("normalBtn");
+    const foreverBtn = document.getElementById("foreverBtn");
+
+    const box = 20;
+    const rows = canvas.height / box;
+    const cols = canvas.width / box;
+
+    let snake = [{ x: 9 * box, y: 10 * box }];
+    let direction = "RIGHT";
+    let nextDirection = "RIGHT";
+    let food = randomFood();
+    let score = 0;
+    let gameOver = false;
+    let foreverMode = false;
+
+    document.addEventListener("keydown", changeDirection);
+
+    normalBtn.addEventListener("click", () => {
+      foreverMode = false;
+      restartGame();
+    });
+
+    foreverBtn.addEventListener("click", () => {
+      foreverMode = true;
+      restartGame();
+    });
+
+    function randomFood() {
+      let newFood;
+      let onSnake;
+
+      do {
+        onSnake = false;
+        newFood = {
+          x: Math.floor(Math.random() * cols) * box,
+          y: Math.floor(Math.random() * rows) * box
+        };
+
+        for (let part of snake) {
+          if (part.x === newFood.x && part.y === newFood.y) {
+            onSnake = true;
+            break;
+          }
+        }
+      } while (onSnake);
+
+      return newFood;
+    }
+
+    function changeDirection(event) {
+      const key = event.key;
+
+      if (gameOver && (key === "r" || key === "R")) {
+        restartGame();
+        return;
+      }
+
+      if (key === "ArrowUp" && direction !== "DOWN") {
+        nextDirection = "UP";
+      } else if (key === "ArrowDown" && direction !== "UP") {
+        nextDirection = "DOWN";
+      } else if (key === "ArrowLeft" && direction !== "RIGHT") {
+        nextDirection = "LEFT";
+      } else if (key === "ArrowRight" && direction !== "LEFT") {
+        nextDirection = "RIGHT";
+      }
+    }
+
+    function restartGame() {
+      snake = [{ x: 9 * box, y: 10 * box }];
+      direction = "RIGHT";
+      nextDirection = "RIGHT";
+      food = randomFood();
+      score = 0;
+      gameOver = false;
+    }
+
+    function collision(head, array) {
+      for (let i = 0; i < array.length; i++) {
+        if (head.x === array[i].x && head.y === array[i].y) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function wrapPosition(value, max) {
+      if (value < 0) return max - box;
+      if (value >= max) return 0;
+      return value;
+    }
+
+    function update() {
+      if (gameOver) return;
+
+      direction = nextDirection;
+
+      let headX = snake[0].x;
+      let headY = snake[0].y;
+
+      if (direction === "UP") headY -= box;
+      if (direction === "DOWN") headY += box;
+      if (direction === "LEFT") headX -= box;
+      if (direction === "RIGHT") headX += box;
+
+      if (foreverMode) {
+        headX = wrapPosition(headX, canvas.width);
+        headY = wrapPosition(headY, canvas.height);
+      }
+
+      const newHead = { x: headX, y: headY };
+
+      if (!foreverMode) {
+        if (
+          headX < 0 ||
+          headY < 0 ||
+          headX >= canvas.width ||
+          headY >= canvas.height ||
+          collision(newHead, snake)
+        ) {
+          gameOver = true;
+          return;
+        }
+      } else {
+        if (collision(newHead, snake)) {
+          snake.pop();
+        }
+      }
+
+      snake.unshift(newHead);
+
+      if (headX === food.x && headY === food.y) {
+        score++;
+        food = randomFood();
+      } else {
+        snake.pop();
+      }
+    }
+
+    function drawGrid() {
+      ctx.strokeStyle = "#333";
+      for (let x = 0; x <= canvas.width; x += box) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= canvas.height; y += box) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      drawGrid();
+
+      ctx.fillStyle = "red";
+      ctx.fillRect(food.x, food.y, box, box);
+
+      for (let i = 0; i < snake.length; i++) {
+        ctx.fillStyle = i === 0 ? "lime" : "green";
+        ctx.fillRect(snake[i].x, snake[i].y, box, box);
+      }
+
+      ctx.fillStyle = "white";
+      ctx.font = "24px Arial";
+      ctx.fillText("Score: " + score, 10, 28);
+      ctx.fillText(foreverMode ? "Mode: Forever" : "Mode: Normal", 10, 56);
+
+      if (gameOver) {
+        ctx.fillStyle = "white";
+        ctx.font = "36px Arial";
+        ctx.fillText("Game Over", 110, 180);
+        ctx.font = "22px Arial";
+        ctx.fillText("Press R to Restart", 110, 220);
+      }
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+    }
+
+    setInterval(gameLoop, 180);
+  </script>
+</body>
+</html>

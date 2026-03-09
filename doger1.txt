@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doger 1</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 10px 0 0;
+    }
+
+    p {
+      margin: 5px 0 10px;
+    }
+
+    #backButton {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 10px 14px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      background: white;
+      color: black;
+      cursor: pointer;
+      z-index: 1000;
+    }
+
+    #backButton:hover {
+      background: #ddd;
+    }
+
+    #topBar {
+      margin: 10px auto;
+      width: 520px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    #stats {
+      text-align: left;
+      font-size: 18px;
+    }
+
+    #shop {
+      width: 520px;
+      margin: 10px auto;
+      background: #222;
+      border: 2px solid white;
+      padding: 10px;
+      box-sizing: border-box;
+      border-radius: 8px;
+    }
+
+    #shop h2 {
+      margin: 0 0 10px 0;
+      font-size: 22px;
+    }
+
+    #skins {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .skin-btn {
+      padding: 8px 10px;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      border-radius: 6px;
+      min-width: 110px;
+    }
+
+    canvas {
+      background: #222;
+      display: block;
+      margin: 0 auto 20px auto;
+      border: 2px solid white;
+    }
+
+    #message {
+      margin-top: 10px;
+      min-height: 24px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <button id="backButton" onclick="goBack()">← Back to Oliver's Games</button>
+
+  <h1>Doger 1</h1>
+  <p>Move with Left / Right or move your mouse over the game</p>
+
+  <div id="topBar">
+    <div id="stats">
+      <div>Level: <span id="levelText">1</span></div>
+      <div>Score: <span id="scoreText">0</span> / 100</div>
+      <div>Coins: <span id="coinsText">0</span></div>
+      <div>Skin: <span id="skinText">white</span></div>
+    </div>
+  </div>
+
+  <div id="shop">
+    <h2>Skin Shop</h2>
+    <div id="skins"></div>
+    <div id="message"></div>
+  </div>
+
+  <canvas id="gameCanvas" width="520" height="620"></canvas>
+
+  <script>
+    function goBack() {
+      window.location.href = "../";
+    }
+
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const levelText = document.getElementById("levelText");
+    const scoreText = document.getElementById("scoreText");
+    const coinsText = document.getElementById("coinsText");
+    const skinText = document.getElementById("skinText");
+    const messageText = document.getElementById("message");
+    const skinsDiv = document.getElementById("skins");
+
+    const levelGoal = 100;
+
+    const skins = [
+      { name: "white", color: "white", cost: 0, text: "black" },
+      { name: "red", color: "red", cost: 100, text: "white" },
+      { name: "orange", color: "orange", cost: 200, text: "black" },
+      { name: "yellow", color: "yellow", cost: 300, text: "black" },
+      { name: "green", color: "green", cost: 400, text: "white" },
+      { name: "blue", color: "blue", cost: 500, text: "white" },
+      { name: "purple", color: "purple", cost: 600, text: "white" },
+      { name: "pink", color: "hotpink", cost: 700, text: "white" },
+      { name: "cyan", color: "cyan", cost: 800, text: "black" },
+      { name: "gold", color: "gold", cost: 900, text: "black" },
+      { name: "silver", color: "silver", cost: 1000, text: "black" },
+      { name: "lime", color: "lime", cost: 1100, text: "black" },
+      { name: "magenta", color: "magenta", cost: 1200, text: "white" },
+      { name: "brown", color: "saddlebrown", cost: 1300, text: "white" },
+      { name: "navy", color: "navy", cost: 1400, text: "white" }
+    ];
+
+    let coins = 0;
+    let level = 1;
+    let score = 0;
+    let gameOver = false;
+    let levelComplete = false;
+    let frameCount = 0;
+    let obstacles = [];
+    let mouseX = canvas.width / 2;
+    let mouseControlActive = false;
+
+    let ownedSkins = { white: true };
+    let currentSkin = "white";
+
+    const player = {
+      x: 230,
+      y: 560,
+      width: 60,
+      height: 20,
+      speed: 7
+    };
+
+    const keys = {
+      left: false,
+      right: false
+    };
+
+    function saveGame() {
+      const saveData = {
+        coins,
+        level,
+        currentSkin,
+        ownedSkins
+      };
+      localStorage.setItem("doger1Save", JSON.stringify(saveData));
+    }
+
+    function loadGame() {
+      const saved = localStorage.getItem("doger1Save");
+      if (!saved) return;
+
+      try {
+        const data = JSON.parse(saved);
+        coins = data.coins ?? 0;
+        level = data.level ?? 1;
+        currentSkin = data.currentSkin ?? "white";
+        ownedSkins = data.ownedSkins ?? { white: true };
+
+        if (!ownedSkins.white) {
+          ownedSkins.white = true;
+        }
+      } catch (err) {
+        console.log("Save load failed");
+      }
+    }
+
+    function getSkinColor(name) {
+      const skin = skins.find(s => s.name === name);
+      return skin ? skin.color : "white";
+    }
+
+    function showMessage(text) {
+      messageText.textContent = text;
+    }
+
+    function updateUI() {
+      levelText.textContent = level;
+      scoreText.textContent = score;
+      coinsText.textContent = coins;
+      skinText.textContent = currentSkin;
+      renderShop();
+    }
+
+    function renderShop() {
+      skinsDiv.innerHTML = "";
+
+      for (const skin of skins) {
+        const btn = document.createElement("button");
+        btn.className = "skin-btn";
+        btn.style.background = skin.color;
+        btn.style.color = skin.text;
+
+        let label = skin.name;
+        if (skin.cost === 0) {
+          label += " (free)";
+        } else if (ownedSkins[skin.name]) {
+          label += " (owned)";
+        } else {
+          label += " (" + skin.cost + ")";
+        }
+
+        if (currentSkin === skin.name) {
+          label += " [using]";
+        }
+
+        btn.textContent = label;
+        btn.onclick = () => buyOrUseSkin(skin.name);
+        skinsDiv.appendChild(btn);
+      }
+    }
+
+    function buyOrUseSkin(name) {
+      const skin = skins.find(s => s.name === name);
+      if (!skin) return;
+
+      if (ownedSkins[name]) {
+        currentSkin = name;
+        showMessage("Using " + name + " skin");
+      } else if (coins >= skin.cost) {
+        coins -= skin.cost;
+        ownedSkins[name] = true;
+        currentSkin = name;
+        showMessage("Bought " + name + " skin for " + skin.cost + " coins");
+      } else {
+        showMessage("Need " + skin.cost + " coins for " + name);
+      }
+
+      saveGame();
+      updateUI();
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") keys.left = true;
+      if (e.key === "ArrowRight") keys.right = true;
+
+      if ((e.key === "r" || e.key === "R") && gameOver) {
+        restartAfterLoss();
+      }
+
+      if ((e.key === "n" || e.key === "N") && levelComplete) {
+        nextLevel();
+      }
+    });
+
+    document.addEventListener("keyup", (e) => {
+      if (e.key === "ArrowLeft") keys.left = false;
+      if (e.key === "ArrowRight") keys.right = false;
+    });
+
+    canvas.addEventListener("mousemove", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      mouseX = e.clientX - rect.left;
+      mouseControlActive = true;
+    });
+
+    canvas.addEventListener("mouseleave", () => {
+      mouseControlActive = false;
+    });
+
+    function getObstacleSpeed() {
+      return Math.random() * 3 + 3 + (level - 1) * 0.7;
+    }
+
+    function createObstacle() {
+      const width = Math.random() * 60 + 20;
+      const x = Math.random() * (canvas.width - width);
+
+      obstacles.push({
+        x: x,
+        y: -20,
+        width: width,
+        height: 20,
+        speed: getObstacleSpeed(),
+        color: "tomato"
+      });
+    }
+
+    function endGame() {
+      gameOver = true;
+      coins += score;
+      saveGame();
+      showMessage("Game over. You earned " + score + " coins. Press R to retry.");
+      updateUI();
+    }
+
+    function completeLevel() {
+      levelComplete = true;
+      coins += 200;
+      saveGame();
+      showMessage("Level " + level + " complete! +200 coins. Press N for next level.");
+      updateUI();
+    }
+
+    function restartAfterLoss() {
+      obstacles = [];
+      score = 0;
+      frameCount = 0;
+      gameOver = false;
+      levelComplete = false;
+      player.x = 230;
+      showMessage("");
+      updateUI();
+      gameLoop();
+    }
+
+    function nextLevel() {
+      level++;
+      obstacles = [];
+      score = 0;
+      frameCount = 0;
+      gameOver = false;
+      levelComplete = false;
+      player.x = 230;
+      saveGame();
+      showMessage("Level " + level);
+      updateUI();
+      gameLoop();
+    }
+
+    function movePlayer() {
+      if (keys.left && player.x > 0) {
+        player.x -= player.speed;
+      }
+
+      if (keys.right && player.x + player.width < canvas.width) {
+        player.x += player.speed;
+      }
+
+      if (mouseControlActive) {
+        const targetX = mouseX - player.width / 2;
+        const diff = targetX - player.x;
+
+        if (Math.abs(diff) > player.speed) {
+          player.x += Math.sign(diff) * player.speed;
+        } else {
+          player.x = targetX;
+        }
+      }
+
+      if (player.x < 0) player.x = 0;
+      if (player.x + player.width > canvas.width) {
+        player.x = canvas.width - player.width;
+      }
+    }
+
+    function update() {
+      if (gameOver || levelComplete) return;
+
+      frameCount++;
+      movePlayer();
+
+      const spawnRate = Math.max(10, 30 - (level - 1) * 2);
+      if (frameCount % spawnRate === 0) {
+        createObstacle();
+      }
+
+      for (let i = 0; i < obstacles.length; i++) {
+        obstacles[i].y += obstacles[i].speed;
+
+        if (
+          player.x < obstacles[i].x + obstacles[i].width &&
+          player.x + player.width > obstacles[i].x &&
+          player.y < obstacles[i].y + obstacles[i].height &&
+          player.y + player.height > obstacles[i].y
+        ) {
+          endGame();
+          return;
+        }
+
+        if (obstacles[i].y > canvas.height) {
+          obstacles.splice(i, 1);
+          score++;
+          i--;
+
+          if (score >= levelGoal) {
+            completeLevel();
+            return;
+          }
+        }
+      }
+
+      updateUI();
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = getSkinColor(currentSkin);
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+    }
+
+    function drawObstacles() {
+      for (const obstacle of obstacles) {
+        ctx.fillStyle = obstacle.color;
+        ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+      }
+    }
+
+    function drawHud() {
+      ctx.fillStyle = "white";
+      ctx.font = "24px Arial";
+      ctx.fillText("Level: " + level, 20, 30);
+      ctx.fillText("Score: " + score + " / " + levelGoal, 20, 60);
+      ctx.fillText("Coins: " + coins, 20, 90);
+    }
+
+    function drawGameOver() {
+      ctx.fillStyle = "white";
+      ctx.font = "38px Arial";
+      ctx.fillText("Game Over", 150, 250);
+      ctx.font = "24px Arial";
+      ctx.fillText("Press R to Retry", 175, 295);
+      ctx.fillText("Round Coins: " + score, 165, 335);
+    }
+
+    function drawLevelComplete() {
+      ctx.fillStyle = "white";
+      ctx.font = "34px Arial";
+      ctx.fillText("Level Complete!", 145, 250);
+      ctx.font = "24px Arial";
+      ctx.fillText("+200 Coins", 195, 290);
+      ctx.fillText("Press N for Next Level", 140, 330);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPlayer();
+      drawObstacles();
+      drawHud();
+
+      if (gameOver) drawGameOver();
+      if (levelComplete) drawLevelComplete();
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+
+      if (!gameOver && !levelComplete) {
+        requestAnimationFrame(gameLoop);
+      }
+    }
+
+    loadGame();
+    updateUI();
+    gameLoop();
+  </script>
+</body>
+</html>
